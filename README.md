@@ -41,24 +41,24 @@ The application uses the GitHub REST API to collect repository information and g
 
 ## System Architecture
 
-![RepoPulse Lite System Architecture](architecture/architecture.png)
+![RepoPulse Lite System Architecture](frontend/architecture/architecture.png)
 
 
 ### Home Page
 
-![Home Page](screenshots/home.png)
+![Home Page](frontend/screenshots/home.png)
 
 
 ### Repository Analysis
 
-![Repository Analysis](screenshots/analysis.png)
+![Repository Analysis](frontend/screenshots/analysis.png)
 
 
 ### AI Insights
 
-![AI Insights](screenshots/ai-insights.png)
+
+![AI Insights](frontend/screenshots/ai-insights.png)
 
 
 ### PDF Report
-
-![PDF Report](screenshots/pdf-report.png)
+![PDF Report](frontend/screenshots/pdf-report.png)
