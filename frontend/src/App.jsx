@@ -31,7 +31,7 @@ function App() {
 
 
       const response = await fetch(
-        "http://127.0.0.1:8000/analyze",
+        "https://repopulselite.onrender.com/analyze",
         {
 
           method:"POST",
@@ -103,7 +103,7 @@ function App() {
 
     const response = await fetch(
 
-      "http://127.0.0.1:8000/generate-report",
+      "https://repopulselite.onrender.com/generate-report",
 
       {
 
@@ -140,7 +140,7 @@ function App() {
 
 
     document.body.appendChild(link);
-
+ 
 
     link.click();
 
