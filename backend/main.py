@@ -193,11 +193,32 @@ def analyze_repo(request: RepoRequest):
                 detail="Please enter valid GitHub URL"
             )
 
-        api = f"https://api.github.com/repos/{owner}/{repo}"
-        response = requests.get(api)
+            api = f"https://api.github.com/repos/{owner}/{repo}"
+
+        print("========== DEBUG ==========")
+        print("Repo URL:", repo_url)
+        print("Owner:", owner)
+        print("Repo:", repo)
+        print("API:", api)
+
+        response = requests.get(
+            api,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "RepoPulseLite"
+            },
+            timeout=20
+        )
+
+        print("Status:", response.status_code)
+        print("Response:", response.text)
+        print("===========================")
 
         if response.status_code != 200:
-            raise HTTPException(status_code=404, detail="Repository not found")
+            raise HTTPException(
+                status_code=404,
+                detail=response.text
+            )
 
         data = response.json()
 
