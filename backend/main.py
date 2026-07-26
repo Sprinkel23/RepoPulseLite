@@ -179,6 +179,8 @@ def analyze_repo(request: RepoRequest):
             raise HTTPException(status_code=400, detail="Please enter valid GitHub URL")
 
         parts = repo_url.split("/")
+        if len(parts) < 5:
+            raise HTTPException(status_code=400, detail="Please enter valid GitHub URL")
 
         try:
             owner = parts[3]
@@ -193,14 +195,7 @@ def analyze_repo(request: RepoRequest):
                 detail="Please enter valid GitHub URL"
             )
 
-            api = f"https://api.github.com/repos/{owner}/{repo}"
-
-        print("========== DEBUG ==========")
-        print("Repo URL:", repo_url)
-        print("Owner:", owner)
-        print("Repo:", repo)
-        print("API:", api)
-
+        api = f"https://api.github.com/repos/{owner}/{repo}"
         response = requests.get(
             api,
             headers={
@@ -209,10 +204,6 @@ def analyze_repo(request: RepoRequest):
             },
             timeout=20
         )
-
-        print("Status:", response.status_code)
-        print("Response:", response.text)
-        print("===========================")
 
         if response.status_code != 200:
             raise HTTPException(
@@ -256,6 +247,55 @@ def analyze_repo(request: RepoRequest):
                     "contributions": user["contributions"],
                     "profile": user["html_url"]
                 })
+
+        # ---------------- LANGUAGES ----------------
+        lang_url = f"https://api.github.com/repos/{owner}/{repo}/languages"
+        lang_response = requests.get(lang_url)
+
+        languages = {}
+        if lang_response.status_code == 200:
+            languages = lang_response.json()
+
+        # ---------------- EXTRA FEATURES ----------------
+        readme = analyze_readme(owner, repo)
+        license = get_license(data)
+        topics = get_topics(owner, repo)
+        latest_commit = get_latest_commit(owner, repo)
+        commit_analysis = get_commit_analysis(owner, repo)
+
+        ai_insight = generate_insight(
+            stars,
+            forks,
+            data.get("language", "Unknown"),
+            score
+        )
+
+        return {
+            "name": data["name"],
+            "description": data["description"],
+            "stars": stars,
+            "forks": forks,
+            "language": data.get("language", "Unknown"),
+            "open_issues": issues,
+            "owner": data["owner"]["login"],
+            "health_score": score,
+            "created_date": data["created_at"],
+            "updated_date": data["updated_at"],
+            "size": data["size"],
+            "default_branch": data["default_branch"],
+            "contributors": contributors,
+            "languages": languages,
+            "readme": readme,
+            "license": license,
+            "topics": topics,
+            "latest_commit": latest_commit,
+            "ai_insight": ai_insight,
+            "commit_analysis": commit_analysis
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
         # ---------------- LANGUAGES ----------------
         lang_url = f"https://api.github.com/repos/{owner}/{repo}/languages"
