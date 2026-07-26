@@ -1,7 +1,6 @@
 import { useState } from "react";
 import "./style.css";
 
-
 function App() {
 
   const [repoUrl, setRepoUrl] = useState("");
@@ -10,569 +9,413 @@ function App() {
   const [loading, setLoading] = useState(false);
 
 
+  const analyzeRepo = async () => {
 
-  const analyzeRepo = async()=>{
-
-
-    if(!repoUrl){
-
+    if (!repoUrl) {
       setMessage("Please enter GitHub repository URL");
       return;
-
     }
 
 
-    try{
-
+    try {
 
       setLoading(true);
       setMessage("");
       setRepoData(null);
 
 
-
       const response = await fetch(
         "https://repopulselite.onrender.com/analyze",
         {
+          method: "POST",
 
-          method:"POST",
-
-          headers:{
-            "Content-Type":"application/json"
+          headers: {
+            "Content-Type": "application/json"
           },
 
-          body:JSON.stringify({
-
-            repo_url:repoUrl
-
+          body: JSON.stringify({
+            repo_url: repoUrl
           })
-
         }
       );
-
 
 
       const data = await response.json();
 
 
-
-      if(data.error){
-
+      if (data.error) {
         setMessage(data.error);
-
       }
-      else{
-
+      else {
         setRepoData(data);
-
       }
 
 
     }
-
-    catch(error){
+    catch(error) {
 
       setMessage("Backend is not running!");
 
     }
-
-    finally{
+    finally {
 
       setLoading(false);
 
     }
 
-
   };
 
 
 
+  const downloadReport = async () => {
 
 
-  const downloadReport = async()=>{
-
-
-    if(!repoData){
-
+    if (!repoData) {
       alert("Analyze repository first");
-
       return;
-
     }
 
 
-
     const response = await fetch(
-
       "https://repopulselite.onrender.com/generate-report",
-
       {
-
         method:"POST",
 
         headers:{
-
           "Content-Type":"application/json"
-
         },
 
         body:JSON.stringify(repoData)
 
       }
-
     );
-
 
 
     const blob = await response.blob();
 
 
-
     const url = window.URL.createObjectURL(blob);
-
 
 
     const link = document.createElement("a");
 
+    link.href = url;
 
-    link.href=url;
-
-    link.download="RepoPulse_Report.pdf";
+    link.download = "RepoPulse_Report.pdf";
 
 
     document.body.appendChild(link);
- 
 
     link.click();
 
-
     link.remove();
-
 
   };
 
 
 
+  return (
 
+    <div className="container">
 
-return (
 
-<div
+      <div className="hero">
 
-style={{
+        <h1>
+          🚀 RepoPulse Lite
+        </h1>
 
-maxWidth:"1000px",
 
-margin:"40px auto",
+        <p>
+          Analyze any public GitHub repository using AI insights.
+        </p>
 
-fontFamily:"Arial",
 
-textAlign:"center"
+      </div>
 
-}}
 
->
+      <div className="search-box">
 
 
-<h1>🚀 RepoPulse Lite</h1>
+        <input
 
+          className="input"
 
-<p>
-Analyze any public GitHub repository.
-</p>
+          type="text"
 
+          placeholder="https://github.com/facebook/react"
 
+          value={repoUrl}
 
+          onChange={(e)=>setRepoUrl(e.target.value)}
 
-<input
+        />
 
-type="text"
 
-placeholder="https://github.com/facebook/react"
+        <button
 
-value={repoUrl}
+          className="button"
 
-onChange={(e)=>setRepoUrl(e.target.value)}
+          onClick={analyzeRepo}
 
-style={{
+          disabled={loading}
 
-width:"90%",
+        >
 
-padding:"14px",
+          {
+            loading 
+            ? "🔍 Analyzing..."
+            : "Analyze Repository"
+          }
 
-fontSize:"16px",
 
-borderRadius:"8px",
+        </button>
 
-border:"1px solid #aaa"
 
-}}
+      </div>
 
-/>
 
+      <h3 className="message">
+        {message}
+      </h3>
 
+      {
+        repoData &&
 
-<br/><br/>
+        <div className="results">
 
 
+          <h2>
+            📊 Repository Details
+          </h2>
 
 
+          <div className="stats-grid">
 
-<button
 
-onClick={analyzeRepo}
+            <Card 
+              title="📦 Name" 
+              value={repoData.name}
+            />
 
-disabled={loading}
 
-style={{
+            <Card 
+              title="⭐ Stars" 
+              value={repoData.stars}
+            />
 
-padding:"12px 30px",
 
-fontSize:"16px",
+            <Card 
+              title="🍴 Forks" 
+              value={repoData.forks}
+            />
 
-borderRadius:"8px",
 
-cursor:"pointer"
+            <Card 
+              title="💻 Language" 
+              value={repoData.language}
+            />
 
-}}
 
->
+            <Card 
+              title="👤 Owner" 
+              value={repoData.owner}
+            />
 
-{
 
-loading ?
+            <Card 
+              title="❗ Issues" 
+              value={repoData.open_issues}
+            />
 
-"🔍 Analyzing..."
 
-:
+            <Card
 
-"Analyze Repository"
+              title="💚 Health Score"
 
-}
+              value={`${repoData.health_score}/100`}
 
+            />
 
-</button>
 
+          </div>
 
 
-<h3>{message}</h3>
 
+          <Box title="❤️ Repository Health">
 
 
+            <div className="health-bar">
 
 
-{
+              <div
 
-repoData &&
+                className="health-progress"
 
-<div>
+                style={{
+                  width:`${repoData.health_score}%`
+                }}
 
+              >
 
+              </div>
 
-<h2>📊 Repository Details</h2>
 
+            </div>
 
 
+          </Box>
 
 
-<div
 
-style={{
 
-display:"grid",
 
-gridTemplateColumns:"repeat(2,1fr)",
+          <Box title="📝 Description">
 
-gap:"20px"
 
-}}
+            <p className="description">
 
->
+              {repoData.description}
 
+            </p>
 
 
-<Card title="📦 Name" value={repoData.name}/>
+          </Box>
 
-<Card title="⭐ Stars" value={repoData.stars}/>
 
-<Card title="🍴 Forks" value={repoData.forks}/>
 
-<Card title="💻 Language" value={repoData.language}/>
 
-<Card title="👤 Owner" value={repoData.owner}/>
 
-<Card title="❗ Issues" value={repoData.open_issues}/>
+          <Box title="👥 Top Contributors">
 
 
-<Card
+          {
+            repoData.contributors?.map((user,index)=>(
 
-title="💚 Health Score"
 
-value={`${repoData.health_score}/100`}
+              <div 
+                className="contributor-card"
+                key={index}
+              >
 
-/>
 
+                <h3>
+                  🥇 {user.username}
+                </h3>
 
 
-</div>
+                <p>
+                  Contributions: {user.contributions}
+                </p>
 
 
+                <a
 
+                  href={user.profile}
 
+                  target="_blank"
 
-<Box title="❤️ Repository Health">
+                  rel="noreferrer"
 
+                >
 
-<div
+                  View GitHub Profile
 
-style={{
+                </a>
 
-height:"25px",
 
-background:"#eee",
+              </div>
 
-borderRadius:"20px"
 
-}}
+            ))
+          }
 
->
 
+          </Box>
 
-<div
 
-style={{
 
-width:`${repoData.health_score}%`,
 
-height:"25px",
 
-background:"#4caf50",
+          <Box title="📊 Language Statistics">
 
-borderRadius:"20px"
 
-}}
+          {
 
->
+            repoData.languages &&
 
+            Object.entries(repoData.languages)
 
-</div>
+            .map(([language,bytes])=>(
 
 
-</div>
+              <div 
 
+                className="language-card"
 
+                key={language}
 
-</Box>
+              >
 
 
+                <h3>
+                  {language}
+                </h3>
 
 
+                <p>
+                  {bytes.toLocaleString()} bytes
+                </p>
 
 
-<Box title="📝 Description">
+              </div>
 
 
-<p>
+            ))
 
-{repoData.description}
+          }
 
-</p>
 
+          </Box>
+                    <Box title="🤖 AI Repository Insights">
 
-</Box>
 
+            <p className="ai-text">
 
+              {repoData.ai_insight}
 
+            </p>
 
 
+          </Box>
 
 
-<Box title="👥 Top Contributors">
 
 
-{
 
-repoData.contributors?.map((user,index)=>(
+          <button
 
+            className="download-button"
 
-<div
+            onClick={downloadReport}
 
-key={index}
+          >
 
-style={{
+            📄 Download PDF Report
 
-padding:"15px",
 
-margin:"10px",
+          </button>
 
-border:"1px solid #ddd",
 
-borderRadius:"10px"
 
-}}
+        </div>
 
->
+      }
 
 
-<h3>
+    </div>
 
-🥇 {user.username}
-
-</h3>
-
-
-<p>
-
-Contributions: {user.contributions}
-
-</p>
-
-
-
-<a
-
-href={user.profile}
-
-target="_blank"
-
-rel="noreferrer"
-
->
-
-View GitHub Profile
-
-</a>
-
-
-</div>
-
-
-
-))
-
-
-}
-
-
-</Box>
-
-
-
-
-
-
-
-
-<Box title="📊 Language Statistics">
-
-
-{
-
-repoData.languages &&
-
-Object.entries(repoData.languages)
-
-.map(([language,bytes])=>(
-
-
-<div key={language}>
-
-
-<h3>{language}</h3>
-
-
-<p>
-
-{bytes.toLocaleString()} bytes
-
-</p>
-
-
-</div>
-
-
-))
-
-
-}
-
-
-</Box>
-
-
-
-
-
-
-
-
-<Box title="🤖 AI Repository Insights">
-
-
-<p
-
-style={{
-
-whiteSpace:"pre-line",
-
-textAlign:"left",
-
-lineHeight:"1.6"
-
-}}
-
->
-
-{repoData.ai_insight}
-
-</p>
-
-
-</Box>
-
-
-
-
-
-
-
-<button
-
-onClick={downloadReport}
-
-style={{
-
-marginTop:"30px",
-
-padding:"15px 35px",
-
-fontSize:"18px",
-
-borderRadius:"10px",
-
-cursor:"pointer"
-
-}}
-
->
-
-📄 Download PDF Report
-
-</button>
-
-
-
-
-
-</div>
-
-}
-
-
-
-</div>
-
-);
+  );
 
 }
 
@@ -583,37 +426,27 @@ cursor:"pointer"
 function Card({title,value}){
 
 
-return(
+  return (
 
-<div
-
-style={{
-
-padding:"20px",
-
-border:"1px solid #ddd",
-
-borderRadius:"12px",
-
-boxShadow:"0 3px 10px rgba(0,0,0,0.1)"
-
-}}
-
->
+    <div className="card">
 
 
-<h3>{title}</h3>
+      <h3>
+        {title}
+      </h3>
 
-<h2>{value}</h2>
+
+      <h2>
+        {value}
+      </h2>
 
 
-</div>
+    </div>
 
-);
+  );
 
 
 }
-
 
 
 
@@ -622,37 +455,27 @@ boxShadow:"0 3px 10px rgba(0,0,0,0.1)"
 function Box({title,children}){
 
 
-return(
+  return (
 
-<div
-
-style={{
-
-marginTop:"30px",
-
-padding:"20px",
-
-border:"1px solid #ddd",
-
-borderRadius:"12px"
-
-}}
-
->
+    <div className="box">
 
 
-<h3>{title}</h3>
-
-{children}
-
-
-</div>
+      <h3>
+        {title}
+      </h3>
 
 
-);
+      {children}
+
+
+    </div>
+
+  );
 
 
 }
+
+
 
 
 
