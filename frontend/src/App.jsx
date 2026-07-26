@@ -25,7 +25,7 @@ function App() {
 
 
       const response = await fetch(
-        "http://127.0.0.1:8000/analyze",
+        "http://localhost:8000/analyze",
         {
           method: "POST",
 
@@ -78,18 +78,17 @@ function App() {
 
 
     const response = await fetch(
-      "http://127.0.0.1:8000/generate-report",
-      {
-        method:"POST",
+  "http://localhost:8000/generate-report",
+  {
+    method:"POST",
 
-        headers:{
-          "Content-Type":"application/json"
-        },
+    headers:{
+      "Content-Type":"application/json"
+    },
 
-        body:JSON.stringify(repoData)
-
-      }
-    );
+    body:JSON.stringify(repoData)
+  }
+);
 
 
     const blob = await response.blob();
