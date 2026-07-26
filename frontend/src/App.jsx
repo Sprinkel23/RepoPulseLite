@@ -25,7 +25,7 @@ function App() {
 
 
       const response = await fetch(
-        "https://repopulselite.onrender.com/analyze",
+        "http://127.0.0.1:8000/analyze",
         {
           method: "POST",
 
@@ -54,9 +54,10 @@ function App() {
     }
     catch(error) {
 
-      setMessage("Backend is not running!");
+  console.log(error);
+  setMessage("ERROR: " + error.message);
 
-    }
+}
     finally {
 
       setLoading(false);
@@ -77,7 +78,7 @@ function App() {
 
 
     const response = await fetch(
-      "https://repopulselite.onrender.com/generate-report",
+      "http://127.0.0.1:8000/generate-report",
       {
         method:"POST",
 
@@ -374,21 +375,38 @@ function App() {
             ))
 
           }
-
-
-          </Box>
-                    <Box title="🤖 AI Repository Insights">
-
-
-            <p className="ai-text">
-
-              {repoData.ai_insight}
-
-            </p>
-
-
           </Box>
 
+<Box title="📊 Commit Complexity Breakdown">
+
+  <div className="stats-grid">
+
+    <Card
+      title="🟢 Tier 1"
+      value={repoData.commit_analysis?.tier_breakdown?.tier1 ?? 0}
+    />
+
+    <Card
+      title="🟡 Tier 2"
+      value={repoData.commit_analysis?.tier_breakdown?.tier2 ?? 0}
+    />
+
+    <Card
+      title="🔴 Tier 3"
+      value={repoData.commit_analysis?.tier_breakdown?.tier3 ?? 0}
+    />
+
+  </div>
+
+</Box>
+
+<Box title="🤖 AI Repository Insights">
+
+  <p className="ai-text">
+    {repoData.ai_insight}
+  </p>
+
+</Box>
 
 
 
