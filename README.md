@@ -62,3 +62,13 @@ The application uses the GitHub REST API to collect repository information and g
 
 ### PDF Report
 ![PDF Report](frontend/screenshots/pdf-report.png)
+## 🚀 Live Demo
+
+Frontend:
+https://repo-pulse-lite.vercel.app
+
+Backend API:
+https://repopulselite.onrender.com
+
+API Documentation:
+https://repopulselite.onrender.com/docs
