@@ -3,12 +3,26 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import requests
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+print("TOKEN LOADED:", bool(GITHUB_TOKEN))
+
+HEADERS = {
+    "Accept": "application/vnd.github+json",
+    "User-Agent": "RepoPulseLite",
+}
+
+if GITHUB_TOKEN:
+    HEADERS["Authorization"] = f"Bearer {GITHUB_TOKEN}"
 
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
 app = FastAPI()
-
 
 # CORS for React + Vercel
 app.add_middleware(
@@ -34,42 +48,46 @@ def home():
 
 
 # ---------------- AI INSIGHT ----------------
-def generate_insight(stars, forks, language, health):
-    if health >= 80:
-        status = "Excellent ✅"
-    elif health >= 60:
-        status = "Good 👍"
+def generate_insight(stars, forks, language, health, tier1, tier2, tier3):
+    if tier3 > tier2:
+        momentum = "Recent commits include many high-complexity changes, indicating active feature development."
     else:
-        status = "Needs Improvement ⚠️"
+        momentum = "Recent commits show a balanced development pace with mostly medium-complexity work."
+
+    if tier3 >= 5:
+        risk = "Several high-complexity commits may increase review difficulty and maintenance risk."
+    else:
+        risk = "Commit sizes are generally manageable with low operational risk."
+
+    if tier1 >= tier3:
+        hygiene = "Commit hygiene appears good with frequent small and focused commits."
+    else:
+        hygiene = "Breaking large commits into smaller units could improve commit hygiene."
 
     return f"""
 🤖 AI Repository Insights
 
-This repository is mainly developed using {language}.
+• Development Momentum
+{momentum}
 
-It has {stars} stars and {forks} forks,
-which shows strong open source community support.
+• Operational Risks
+{risk}
 
-Repository Health Status:
-{status}
-
-Community Activity:
-High developer engagement based on stars, forks and contributors.
-
-The project appears to be actively maintained and has good popularity.
+• Commit Hygiene
+{hygiene}
 """
 
 
 # ---------------- README ANALYSIS ----------------
 def analyze_readme(owner, repo):
     url = f"https://api.github.com/repos/{owner}/{repo}/readme"
-    response = requests.get(url)
+    response = requests.get(url, headers=HEADERS)
 
     if response.status_code == 200:
         data = response.json()
         return {
             "exists": True,
-            "size": data["size"],
+            "size": data.get("size", 0),
             "message": "README file available ✅"
         }
 
@@ -94,6 +112,7 @@ def get_topics(owner, repo):
         "Accept": "application/vnd.github.mercy-preview+json"
     }
 
+    headers.update(HEADERS)
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         return response.json().get("names", [])
@@ -103,7 +122,7 @@ def get_topics(owner, repo):
 # ---------------- LATEST COMMIT ----------------
 def get_latest_commit(owner, repo):
     url = f"https://api.github.com/repos/{owner}/{repo}/commits"
-    response = requests.get(url)
+    response = requests.get(url, headers=HEADERS)
 
     if response.status_code == 200:
         commits = response.json()
@@ -121,8 +140,9 @@ def get_latest_commit(owner, repo):
 
 # ---------------- COMMIT ANALYSIS ----------------
 def get_commit_analysis(owner, repo):
+    print("STARTING COMMIT ANALYSIS")
     url = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page=20"
-    response = requests.get(url)
+    response = requests.get(url, headers=HEADERS)
 
     commits = []
     tier1 = 0
@@ -131,20 +151,33 @@ def get_commit_analysis(owner, repo):
 
     if response.status_code == 200:
         for commit in response.json():
-            sha = commit["sha"]
+            sha = commit.get("sha")
+            if not sha:
+                continue
             detail_url = f"https://api.github.com/repos/{owner}/{repo}/commits/{sha}"
-            detail = requests.get(detail_url)
+            detail = requests.get(detail_url, headers=HEADERS)
             if detail.status_code != 200:
                 continue
 
             info = detail.json()
-            files_changed = len(info.get("files", []))
+            files = info.get("files", [])
+
+            files_changed = len(files)
             lines_changed = info.get("stats", {}).get("total", 0)
 
-            if lines_changed < 50:
+            docs_only = (
+                len(files) > 0 and
+                all(
+                    f.get("filename", "").endswith(".md") or
+                    f.get("filename", "").startswith("docs/")
+                    for f in files
+                )
+            )
+
+            if docs_only or lines_changed < 50:
                 tier = "Tier 1"
                 tier1 += 1
-            elif lines_changed <= 250 and files_changed < 5:
+            elif 50 <= lines_changed <= 250 and files_changed < 5:
                 tier = "Tier 2"
                 tier2 += 1
             else:
@@ -152,12 +185,14 @@ def get_commit_analysis(owner, repo):
                 tier3 += 1
 
             commits.append({
-                "author": info["commit"]["author"]["name"],
-                "message": info["commit"]["message"],
+                "author": info.get("commit", {}).get("author", {}).get("name", "Unknown"),
+                "message": info.get("commit", {}).get("message", ""),
                 "files_changed": files_changed,
                 "lines_changed": lines_changed,
                 "tier": tier
             })
+
+    print("COMMIT ANALYSIS FINISHED")
 
     return {
         "commits": commits,
@@ -188,7 +223,6 @@ def analyze_repo(request: RepoRequest):
 
             if repo.endswith(".git"):
                 repo = repo.replace(".git", "")
-
         except Exception:
             raise HTTPException(
                 status_code=400,
@@ -198,10 +232,7 @@ def analyze_repo(request: RepoRequest):
         api = f"https://api.github.com/repos/{owner}/{repo}"
         response = requests.get(
             api,
-            headers={
-                "Accept": "application/vnd.github+json",
-                "User-Agent": "RepoPulseLite"
-            },
+            headers=HEADERS,
             timeout=20
         )
 
@@ -213,9 +244,9 @@ def analyze_repo(request: RepoRequest):
 
         data = response.json()
 
-        stars = data["stargazers_count"]
-        forks = data["forks_count"]
-        issues = data["open_issues_count"]
+        stars = data.get("stargazers_count", 0)
+        forks = data.get("forks_count", 0)
+        issues = data.get("open_issues_count", 0)
 
         score = 50
         if stars > 1000:
@@ -238,19 +269,19 @@ def analyze_repo(request: RepoRequest):
         # ---------------- CONTRIBUTORS ----------------
         contributors = []
         con_url = f"https://api.github.com/repos/{owner}/{repo}/contributors"
-        con_response = requests.get(con_url)
+        con_response = requests.get(con_url, headers=HEADERS)
 
         if con_response.status_code == 200:
             for user in con_response.json()[:5]:
                 contributors.append({
-                    "username": user["login"],
-                    "contributions": user["contributions"],
-                    "profile": user["html_url"]
+                    "username": user.get("login"),
+                    "contributions": user.get("contributions"),
+                    "profile": user.get("html_url")
                 })
 
         # ---------------- LANGUAGES ----------------
         lang_url = f"https://api.github.com/repos/{owner}/{repo}/languages"
-        lang_response = requests.get(lang_url)
+        lang_response = requests.get(lang_url, headers=HEADERS)
 
         languages = {}
         if lang_response.status_code == 200:
@@ -267,71 +298,25 @@ def analyze_repo(request: RepoRequest):
             stars,
             forks,
             data.get("language", "Unknown"),
-            score
+            score,
+            commit_analysis["tier_breakdown"]["tier1"],
+            commit_analysis["tier_breakdown"]["tier2"],
+            commit_analysis["tier_breakdown"]["tier3"]
         )
 
         return {
-            "name": data["name"],
-            "description": data["description"],
+            "name": data.get("name"),
+            "description": data.get("description"),
             "stars": stars,
             "forks": forks,
             "language": data.get("language", "Unknown"),
             "open_issues": issues,
-            "owner": data["owner"]["login"],
+            "owner": data.get("owner", {}).get("login"),
             "health_score": score,
-            "created_date": data["created_at"],
-            "updated_date": data["updated_at"],
-            "size": data["size"],
-            "default_branch": data["default_branch"],
-            "contributors": contributors,
-            "languages": languages,
-            "readme": readme,
-            "license": license,
-            "topics": topics,
-            "latest_commit": latest_commit,
-            "ai_insight": ai_insight,
-            "commit_analysis": commit_analysis
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-        # ---------------- LANGUAGES ----------------
-        lang_url = f"https://api.github.com/repos/{owner}/{repo}/languages"
-        lang_response = requests.get(lang_url)
-
-        languages = {}
-        if lang_response.status_code == 200:
-            languages = lang_response.json()
-
-        # ---------------- EXTRA FEATURES ----------------
-        readme = analyze_readme(owner, repo)
-        license = get_license(data)
-        topics = get_topics(owner, repo)
-        latest_commit = get_latest_commit(owner, repo)
-        commit_analysis = get_commit_analysis(owner, repo)
-
-        ai_insight = generate_insight(
-            stars,
-            forks,
-            data["language"],
-            score
-        )
-
-        return {
-            "name": data["name"],
-            "description": data["description"],
-            "stars": stars,
-            "forks": forks,
-            "language": data["language"],
-            "open_issues": issues,
-            "owner": data["owner"]["login"],
-            "health_score": score,
-            "created_date": data["created_at"],
-            "updated_date": data["updated_at"],
-            "size": data["size"],
-            "default_branch": data["default_branch"],
+            "created_date": data.get("created_at"),
+            "updated_date": data.get("updated_at"),
+            "size": data.get("size"),
+            "default_branch": data.get("default_branch"),
             "contributors": contributors,
             "languages": languages,
             "readme": readme,
@@ -379,7 +364,7 @@ def generate_report(data: dict):
     y -= 10
     write_line("Top Contributors")
     for user in data.get("contributors", []):
-        write_line(f"{user['username']} - {user['contributions']} contributions")
+        write_line(f"{user.get('username')} - {user.get('contributions')} contributions")
 
     y -= 10
     write_line("Languages")
@@ -405,4 +390,4 @@ def generate_report(data: dict):
     pdf.save()
 
     return FileResponse(filename, media_type="application/pdf", filename=filename)
- 
+
