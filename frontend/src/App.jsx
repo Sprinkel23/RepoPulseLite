@@ -25,7 +25,7 @@ function App() {
 
 
       const response = await fetch(
-        "http://localhost:8000/analyze",
+        "https://repopulselite.onrender.com/analyze",
         {
           method: "POST",
 
@@ -78,7 +78,7 @@ function App() {
 
 
     const response = await fetch(
-  "http://localhost:8000/generate-report",
+  "https://repopulselite.onrender.com/generate-report",
   {
     method:"POST",
 
