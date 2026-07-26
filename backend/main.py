@@ -31,7 +31,8 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:5175",
         "http://localhost:5176",
-        "https://repo-pulse-lite.vercel.app"
+        "https://repo-pulse-lite.vercel.app",
+        "https://repo-pulse-lite-hf4s2larq-sprinkel23s-projects.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
