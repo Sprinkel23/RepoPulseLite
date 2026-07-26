@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+﻿from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -9,7 +9,6 @@ from reportlab.pdfgen import canvas
 
 app = FastAPI()
 
-# CORS for React
 # CORS for React + Vercel
 app.add_middleware(
     CORSMiddleware,
@@ -215,7 +214,6 @@ def analyze_repo(request: RepoRequest):
 
         score = min(score, 100)
 
-        # ---------------- CONTRIBUTORS ----------------
         contributors = []
         con_url = f"https://api.github.com/repos/{owner}/{repo}/contributors"
         con_response = requests.get(con_url)
@@ -228,7 +226,6 @@ def analyze_repo(request: RepoRequest):
                     "profile": user["html_url"]
                 })
 
-        # ---------------- LANGUAGES ----------------
         lang_url = f"https://api.github.com/repos/{owner}/{repo}/languages"
         lang_response = requests.get(lang_url)
 
@@ -236,7 +233,6 @@ def analyze_repo(request: RepoRequest):
         if lang_response.status_code == 200:
             languages = lang_response.json()
 
-        # ---------------- EXTRA FEATURES ----------------
         readme = analyze_readme(owner, repo)
         license = get_license(data)
         topics = get_topics(owner, repo)
@@ -246,7 +242,7 @@ def analyze_repo(request: RepoRequest):
         ai_insight = generate_insight(
             stars,
             forks,
-            data["language"],
+            data.get("language", "Unknown"),
             score
         )
 
@@ -255,7 +251,7 @@ def analyze_repo(request: RepoRequest):
             "description": data["description"],
             "stars": stars,
             "forks": forks,
-            "language": data["language"],
+            "language": data.get("language", "Unknown"),
             "open_issues": issues,
             "owner": data["owner"]["login"],
             "health_score": score,
@@ -336,4 +332,3 @@ def generate_report(data: dict):
     pdf.save()
 
     return FileResponse(filename, media_type="application/pdf", filename=filename)
- 
